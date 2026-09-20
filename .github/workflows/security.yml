@@ -28,8 +28,8 @@ jobs:
       contents: read
       security-events: write   # only for uploading the SARIF report
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -41,7 +41,7 @@ jobs:
             ./cmd/... ./internal/...
       - name: upload SARIF to code scanning
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: golangci.sarif
           category: golangci-lint
@@ -50,8 +50,8 @@ jobs:
     name: govulncheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -63,8 +63,8 @@ jobs:
     name: module integrity + SBOM
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
@@ -74,7 +74,7 @@ jobs:
         run: |
           go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@${{ env.CYCLONEDX_VERSION }}
           "$(go env GOPATH)/bin/cyclonedx-gomod" mod -licenses -json -output sbom.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom.json
@@ -86,11 +86,11 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4
         with:
           languages: go
-      - uses: github/codeql-action/autobuild@v3
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/autobuild@v4
+      - uses: github/codeql-action/analyze@v4
         with:
           category: /language:go
