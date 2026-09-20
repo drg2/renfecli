@@ -1,0 +1,145 @@
+name: Release
+
+# Tagging is the whole trigger: push v1.2.3 and this builds the binaries on the
+# three platforms the CI matrix already tests on, attaches them to a draft
+# release, and publishes it only once every platform has succeeded — so a
+# release is never half-built.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  draft:
+    name: draft the release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # --generate-notes needs the history to diff against
+      - name: create the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Re-running a tag must not fail on a release that already exists.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "release $GITHUB_REF_NAME already exists — reusing it"
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --verify-tag \
+            --generate-notes \
+            --title "$GITHUB_REF_NAME"
+
+  build:
+    name: ${{ matrix.os }}
+    needs: draft
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            arches: amd64 arm64
+          - os: macos-latest
+            goos: darwin
+            arches: amd64 arm64
+          - os: windows-latest
+            goos: windows
+            arches: amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # A binary whose tests fail on the platform it was built for has no
+      # business being attached to a release.
+      - name: tests
+        run: go test ./...
+
+      - name: build and archive (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          ARCHES: ${{ matrix.arches }}
+        run: |
+          set -euo pipefail
+          version="$GITHUB_REF_NAME"
+          commit="$(git rev-parse --short HEAD)"
+          date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          mkdir -p dist
+          # An explicit split: relying on the shell to break $ARCHES apart is
+          # the kind of thing that works until the step's shell changes.
+          read -r -a arch_list <<< "$ARCHES"
+          for arch in "${arch_list[@]}"; do
+            name="renfe_${version}_${GOOS}_${arch}"
+            mkdir -p "dist/$name"
+            # -trimpath keeps the builder's paths out of the binary; CGO is off
+            # so the result is static and runs on any box of that architecture.
+            CGO_ENABLED=0 GOARCH="$arch" go build \
+              -trimpath \
+              -ldflags "-s -w -X main.version=${version} -X main.commit=${commit} -X main.date=${date}" \
+              -o "dist/$name/renfe" ./cmd/renfe
+            cp README.md LICENSE "dist/$name/"
+            tar -C dist -czf "dist/${name}.tar.gz" "$name"
+            rm -rf "dist/$name"
+          done
+          cd dist
+          shasum -a 256 ./*.tar.gz > "renfe_${version}_${GOOS}_SHA256SUMS"
+
+      - name: build and archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:GITHUB_REF_NAME
+          $commit  = (git rev-parse --short HEAD)
+          $date    = (Get-Date -AsUTC -Format 'yyyy-MM-ddTHH:mm:ssZ')
+          $name    = "renfe_${version}_windows_amd64"
+          New-Item -ItemType Directory -Force "dist/$name" | Out-Null
+          $env:CGO_ENABLED = '0'
+          $env:GOOS = 'windows'
+          $env:GOARCH = 'amd64'
+          go build -trimpath `
+            -ldflags "-s -w -X main.version=$version -X main.commit=$commit -X main.date=$date" `
+            -o "dist/$name/renfe.exe" ./cmd/renfe
+          if ($LASTEXITCODE -ne 0) { throw 'go build failed' }
+          Copy-Item README.md, LICENSE "dist/$name/"
+          Compress-Archive -Path "dist/$name" -DestinationPath "dist/$name.zip"
+          Remove-Item -Recurse -Force "dist/$name"
+          $hash = (Get-FileHash "dist/$name.zip" -Algorithm SHA256).Hash.ToLower()
+          Set-Content "dist/renfe_${version}_windows_SHA256SUMS" "$hash  $name.zip"
+
+      - name: attach to the draft
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+
+  publish:
+    name: publish
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: take the release out of draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false

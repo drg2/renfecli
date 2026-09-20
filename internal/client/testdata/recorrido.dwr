@@ -1,0 +1,7 @@
+throw 'allowScriptTagRemoting is false.';
+(function(){
+var r=window.dwr._[0];
+//#DWR-INSERT
+//#DWR-REPLY
+r.handleCallback("0","0",[{destino:"C\u00E1diz",duracionTrasbordo:null,horaLlegada:"11:58",horaSalida:"07:05",imagenTren:"https://ssl.renfe.com/comprabilletes/img/lt/alvia_mini.png",numTrem:"02074",origen:"Madrid-puerta De Atocha-almudena Grandes",prestaciones:[{descripcion:"Reserva Telef\u00F3nica",simbolo:"phone"},{descripcion:"Aseo para personas con movilidad reducida",simbolo:"wc"},{descripcion:"Plazas Personas Movilidad Reducida. Posibles barreras f\u00EDsicas",simbolo:"accessible"},{descripcion:"Tren accesible para todas las personas",simbolo:"accessible"},{descripcion:"Sala Club,seg\u00FAn estaciones,en billetes con esta prestaci\u00F3n",simbolo:"chair"}],trainTravelEnlaceViewBean:[{cdgoEstacion:"37200",descEstacion:"Ciudad Real",llegada:"08:01",salida:"08:01"},{cdgoEstacion:"37300",descEstacion:"Puertollano",llegada:"08:17",salida:"08:17"},{cdgoEstacion:"50500",descEstacion:"C\u00F3rdoba-julio Anguita",llegada:"09:01",salida:"09:01"},{cdgoEstacion:"51003",descEstacion:"Sevilla-santa Justa",llegada:"10:14",salida:"10:14"},{cdgoEstacion:"51300",descEstacion:"Jerez De La Frontera",llegada:"11:11",salida:"11:11"},{cdgoEstacion:"51400",descEstacion:"Puerto De Santa Mar\u00EDa",llegada:"11:24",salida:"11:24"},{cdgoEstacion:"51406",descEstacion:"San Fernando-bah\u00EDa Sur",llegada:"11:41",salida:"11:41"}]}]);
+})();
