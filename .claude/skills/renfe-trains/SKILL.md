@@ -34,10 +34,10 @@ this skill is the playbook for using it accurately.
 
 ## Locate the binary
 
-Run `renfe` from `PATH`. If it isn't there, build it from the repo (Go 1.26+):
+Run `renfe` from `PATH`. If it isn't there, build it from the repo (Go 1.26.6+):
 
 ```bash
-go install github.com/seifreed/renfecli/cmd/renfe@latest   # anywhere, needs Go 1.26+
+go install github.com/seifreed/renfecli/cmd/renfe@latest   # anywhere, needs Go 1.26.6+
 make build                                                 # or, in the checkout: ./renfe
 renfe version
 ```

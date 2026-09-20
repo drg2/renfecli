@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/seifreed/renfecli/releases"><img src="https://img.shields.io/github/v/tag/seifreed/renfecli?style=flat-square&logo=go&logoColor=white&label=version" alt="Versión"></a>
-  <a href="https://go.dev/"><img src="https://img.shields.io/badge/go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Versión de Go"></a>
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/go-1.26.6%2B-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Versión de Go"></a>
   <a href="https://github.com/seifreed/renfecli/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="Licencia"></a>
   <a href="https://github.com/seifreed/renfecli/actions/workflows/quality.yml"><img src="https://img.shields.io/github/actions/workflow/status/seifreed/renfecli/quality.yml?style=flat-square&logo=github&label=quality" alt="Puerta de calidad"></a>
   <a href="https://github.com/seifreed/renfecli/actions/workflows/security.yml"><img src="https://img.shields.io/github/actions/workflow/status/seifreed/renfecli/security.yml?style=flat-square&logo=github&label=security" alt="Puerta de seguridad"></a>
@@ -306,7 +306,9 @@ El catálogo de estaciones se cachea 7 días; `renfe stations --update` lo refre
 
 ## Requisitos
 
-- Go 1.26+
+- Go 1.26.6+ — las versiones anteriores de la serie 1.26 arrastran fallos de
+  `crypto/x509`, `crypto/tls` y `net/http` en la biblioteca estándar, y este
+  cliente depende de la verificación de certificados
 - Las dependencias están en [go.mod](go.mod)
 
 ---
