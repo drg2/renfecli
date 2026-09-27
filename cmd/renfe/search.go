@@ -39,12 +39,26 @@ func addSearchFlags(fs *flag.FlagSet) *searchFlags {
 	return s
 }
 
-// buildQuery resolves the positional origin/destination (falling back to the
-// configured defaults) and the flags into a client.Query. cmd names the calling
-// command so the "give me a route" error tells the user to re-run the one they
-// actually typed.
-func buildQuery(cmd string, cl *client.Client, cfg config.Config, sf *searchFlags, args []string) (client.Query, error) {
-	var q client.Query
+// searchSpec holds the parsed parameters for search, supporting single dates or ranges.
+type searchSpec struct {
+	origin      client.Station
+	dest        client.Station
+	outDates    []time.Time
+	outDisplay  string
+	retDates    []time.Time
+	retDisplay  string
+	hasReturn   bool
+	adults      int
+	children    int
+	infants     int
+	pet         bool
+	bike        bool
+	wheelchairH bool
+	direct      bool
+}
+
+func buildSearchSpec(cmd string, cl *client.Client, cfg config.Config, sf *searchFlags, args []string) (searchSpec, error) {
+	var spec searchSpec
 	from, to := cfg.Defaults.Origin, cfg.Defaults.Destination
 	switch len(args) {
 	case 0:
@@ -54,51 +68,55 @@ func buildQuery(cmd string, cl *client.Client, cfg config.Config, sf *searchFlag
 		from, to = args[0], strings.Join(args[1:], " ")
 	}
 	if from == "" || to == "" {
-		return q, fmt.Errorf("need an origin and a destination: renfe %s <origin> <destination> [--date …]", cmd)
+		return spec, fmt.Errorf("need an origin and a destination: renfe %s <origin> <destination> [--date …]", cmd)
 	}
 	stations, err := loadStations(cl, false)
 	if err != nil {
-		return q, err
+		return spec, err
 	}
 	origin, err := client.ResolveStation(stations, from)
 	if err != nil {
-		return q, err
+		return spec, err
 	}
 	dest, err := client.ResolveStation(stations, to)
 	if err != nil {
-		return q, err
+		return spec, err
 	}
-	date, err := parseDate(sf.date)
+
+	outDates, outDisp, _, err := parseDateSpec(sf.date)
 	if err != nil {
-		return q, err
+		return spec, err
 	}
-	// Renfe answers a past date with the same empty list it uses for one that is
-	// not on sale yet, and the hint for that says to wait for the sale window —
-	// the opposite of what someone who typed last month needs to hear.
-	if today := truncateDay(now()); date.Before(today) {
-		return q, fmt.Errorf("%s has already gone by — Renfe sells from today (%s) onwards",
-			date.Format("2006-01-02"), today.Format("2006-01-02"))
+
+	today := truncateDay(now())
+	if outDates[0].Before(today) {
+		return spec, fmt.Errorf("%s has already gone by — Renfe sells from today (%s) onwards",
+			outDates[0].Format("2006-01-02"), today.Format("2006-01-02"))
 	}
-	var retDate time.Time
+
+	var retDates []time.Time
+	var retDisp string
+	hasReturn := false
 	if sf.ret != "" {
-		if retDate, err = parseDate(sf.ret); err != nil {
-			return q, err
+		hasReturn = true
+		if retDates, retDisp, _, err = parseDateSpec(sf.ret); err != nil {
+			return spec, err
 		}
-		// Renfe accepts it and answers with two unrelated lists, which the CLI
-		// then prints as though they were one trip.
-		if retDate.Before(date) {
-			return q, fmt.Errorf("the return date %s is before the outbound %s",
-				retDate.Format("2006-01-02"), date.Format("2006-01-02"))
+		if len(retDates) != len(outDates) && len(outDates) > 1 && len(retDates) > 1 {
+			return spec, fmt.Errorf("outbound date range and return date range must have the same number of days")
+		}
+		if retDates[0].Before(outDates[0]) {
+			return spec, fmt.Errorf("the return date %s is before the outbound %s",
+				retDates[0].Format("2006-01-02"), outDates[0].Format("2006-01-02"))
 		}
 	}
-	// A negative count reached the header as "-1 adults" while the search ran
-	// for one: the party shown contradicted the party priced.
+
 	for _, c := range []struct {
 		flag string
 		n    int
 	}{{"--adults", sf.adults}, {"--children", sf.children}, {"--infants", sf.infants}} {
 		if err := nonNegative(c.flag, c.n); err != nil {
-			return q, err
+			return spec, err
 		}
 	}
 	adults := sf.adults
@@ -108,19 +126,45 @@ func buildQuery(cmd string, cl *client.Client, cfg config.Config, sf *searchFlag
 	if adults == 0 {
 		adults = 1
 	}
-	return client.Query{
-		Origin: origin.Code, OriginName: origin.Name,
-		Destination: dest.Code, DestName: dest.Name,
-		Date: date, Return: retDate,
-		Adults: adults, Children: sf.children, Infants: sf.infants,
-		Pet: sf.pet, Bike: sf.bike, WheelchairH: sf.plazaH, Direct: sf.direct,
+
+	return searchSpec{
+		origin: origin, dest: dest,
+		outDates: outDates, outDisplay: outDisp,
+		retDates: retDates, retDisplay: retDisp,
+		hasReturn:   hasReturn,
+		adults:      adults,
+		children:    sf.children,
+		infants:     sf.infants,
+		pet:         sf.pet,
+		bike:        sf.bike,
+		wheelchairH: sf.plazaH,
+		direct:      sf.direct,
 	}, nil
 }
 
-// runSearch is the opening the three journey commands share: read the config,
+// buildQuery resolves the positional origin/destination (falling back to the
+// configured defaults) and the flags into a client.Query.
+func buildQuery(cmd string, cl *client.Client, cfg config.Config, sf *searchFlags, args []string) (client.Query, error) {
+	spec, err := buildSearchSpec(cmd, cl, cfg, sf, args)
+	if err != nil {
+		return client.Query{}, err
+	}
+	var retDate time.Time
+	if spec.hasReturn {
+		retDate = spec.retDates[0]
+	}
+	return client.Query{
+		Origin: spec.origin.Code, OriginName: spec.origin.Name,
+		Destination: spec.dest.Code, DestName: spec.dest.Name,
+		Date: spec.outDates[0], Return: retDate,
+		Adults: spec.adults, Children: spec.children, Infants: spec.infants,
+		Pet: spec.pet, Bike: spec.bike, WheelchairH: spec.wheelchairH, Direct: spec.direct,
+	}, nil
+}
+
+// runSearch is the opening the journey commands share: read the config,
 // build a client, resolve the positional route and the flags into a query, and
-// run the one search all of them are built on. The client comes back because
-// `stops` has a second call to make on the same session.
+// run the search.
 func runSearch(cmd string, sf *searchFlags, args []string) (*client.Client, client.Query, *client.Results, error) {
 	cfg := loadConfig()
 	cl := newClient(cfg)
@@ -152,41 +196,123 @@ func cmdSearch(args []string) error {
 	if err := nonNegative("--limit", *limit); err != nil {
 		return err
 	}
-	_, q, res, err := runSearch("search", sf, fs.Args())
+	cfg := loadConfig()
+	cl := newClient(cfg)
+	spec, err := buildSearchSpec("search", cl, cfg, sf, fs.Args())
 	if err != nil {
 		return err
 	}
+
 	window, err := parseTimeWindow(*after, *before)
 	if err != nil {
 		return err
 	}
-	// The return leg takes its own window when one is given. Without it the
-	// outbound's window carries over, which is what a one-way search has always
-	// done and what someone narrowing "afternoon trains" on both legs expects.
 	retWindow := window
 	if *retAfter != "" || *retBefore != "" {
 		if retWindow, err = parseTimeWindow(*retAfter, *retBefore); err != nil {
 			return err
 		}
 	}
-	res.Journeys = filterJourneys(res.Journeys, *available, *cheapest, *limit, window, *train)
-	if res.Return != nil {
-		res.Return.Journeys = filterJourneys(res.Return.Journeys, *available, *cheapest, *limit, retWindow, *train)
+
+	var combinedOutJourneys []client.Journey
+	var combinedRetJourneys []client.Journey
+	var calendar []client.PriceDay
+	fromName, toName := "", ""
+
+	maxIter := len(spec.outDates)
+	if len(spec.retDates) > maxIter {
+		maxIter = len(spec.retDates)
 	}
-	if emitted, err := emitStructured(cf, res); emitted {
+
+	for i := 0; i < maxIter; i++ {
+		outIdx := i
+		if outIdx >= len(spec.outDates) {
+			outIdx = len(spec.outDates) - 1
+		}
+		d := spec.outDates[outIdx]
+
+		var rDate time.Time
+		if spec.hasReturn {
+			retIdx := i
+			if retIdx >= len(spec.retDates) {
+				retIdx = len(spec.retDates) - 1
+			}
+			rDate = spec.retDates[retIdx]
+		}
+
+		q := client.Query{
+			Origin: spec.origin.Code, OriginName: spec.origin.Name,
+			Destination: spec.dest.Code, DestName: spec.dest.Name,
+			Date: d, Return: rDate,
+			Adults: spec.adults, Children: spec.children, Infants: spec.infants,
+			Pet: spec.pet, Bike: spec.bike, WheelchairH: spec.wheelchairH, Direct: spec.direct,
+		}
+
+		res, err := cl.Search(q)
+		if err != nil {
+			if maxIter == 1 {
+				return err
+			}
+			stderrLogf("search failed for date %s: %v", d.Format("2006-01-02"), err)
+			continue
+		}
+
+		fromName = res.From
+		toName = res.To
+		if len(calendar) == 0 && len(res.Calendar) > 0 {
+			calendar = res.Calendar
+		}
+
+		if i < len(spec.outDates) {
+			filteredOut := filterJourneys(res.Journeys, *available, *cheapest, *limit, window, *train)
+			combinedOutJourneys = append(combinedOutJourneys, filteredOut...)
+		}
+
+		if res.Return != nil && (spec.hasReturn && (i < len(spec.retDates) || len(spec.retDates) == 1)) {
+			filteredRet := filterJourneys(res.Return.Journeys, *available, *cheapest, *limit, retWindow, *train)
+			combinedRetJourneys = append(combinedRetJourneys, filteredRet...)
+		}
+	}
+
+	if fromName == "" {
+		fromName = spec.origin.Name
+		toName = spec.dest.Name
+	}
+
+	finalRes := &client.Results{
+		From:     fromName,
+		To:       toName,
+		Date:     spec.outDisplay,
+		Journeys: combinedOutJourneys,
+		Calendar: calendar,
+	}
+	if spec.hasReturn {
+		finalRes.Return = &client.Results{
+			From:     toName,
+			To:       fromName,
+			Date:     spec.retDisplay,
+			Journeys: combinedRetJourneys,
+		}
+	}
+
+	qForPrint := client.Query{
+		Adults: spec.adults, Children: spec.children, Infants: spec.infants,
+	}
+
+	if emitted, err := emitStructured(cf, finalRes); emitted {
 		return err
 	}
-	if err := printResults(os.Stdout, res, q, *fares); err != nil {
+	if err := printResults(os.Stdout, finalRes, qForPrint, *fares); err != nil {
 		return err
 	}
-	if res.Return == nil {
+	if finalRes.Return == nil {
 		return nil
 	}
 	fmt.Println()
-	if err := printResults(os.Stdout, res.Return, q, *fares); err != nil {
+	if err := printResults(os.Stdout, finalRes.Return, qForPrint, *fares); err != nil {
 		return err
 	}
-	if note := sameDayNote(res); note != "" {
+	if note := sameDayNote(finalRes); note != "" {
 		fmt.Print("\n" + note)
 	}
 	return nil

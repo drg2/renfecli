@@ -49,6 +49,46 @@ func TestParseDate(t *testing.T) {
 	}
 }
 
+func TestParseDateSpec(t *testing.T) {
+	fixClock(t)
+
+	// Single date test
+	dates, display, isRange, err := parseDateSpec("today")
+	if err != nil {
+		t.Fatalf("unexpected error for single date: %v", err)
+	}
+	if isRange || len(dates) != 1 || display != "2026-09-22" {
+		t.Errorf("parseDateSpec(\"today\") = %v, %q, %v; want [2026-09-22], \"2026-09-22\", false", dates, display, isRange)
+	}
+
+	// Date range test
+	dates, display, isRange, err = parseDateSpec("[today +3]")
+	if err != nil {
+		t.Fatalf("unexpected error for range: %v", err)
+	}
+	if !isRange || len(dates) != 4 || display != "[2026-09-22 2026-09-25]" {
+		t.Errorf("parseDateSpec(\"[today +3]\") = %v, %q, %v; want 4 dates, \"[2026-09-22 2026-09-25]\", true", dates, display, isRange)
+	}
+
+	// Exceeds 90 days test
+	_, _, _, err = parseDateSpec("[today +95]")
+	if err == nil {
+		t.Errorf("expected error for date range > 90 days, got nil")
+	}
+
+	// End before start test
+	_, _, _, err = parseDateSpec("[tomorrow today]")
+	if err == nil {
+		t.Errorf("expected error for end date before start date, got nil")
+	}
+
+	// Unclosed bracket test
+	_, _, _, err = parseDateSpec("[today tomorrow")
+	if err == nil {
+		t.Errorf("expected error for unclosed bracket, got nil")
+	}
+}
+
 func TestParseDateRejectsNonsense(t *testing.T) {
 	fixClock(t)
 	for _, in := range []string{"someday", "+", "+-3", "2026-13-45", "32/01/2026"} {

@@ -451,6 +451,21 @@ func TestSearchRejectsADateThatHasPassed(t *testing.T) {
 	}
 }
 
+func TestSearchDateRangeExecution(t *testing.T) {
+	fixClock(t)
+	withRenfe(t, replaying(t, "trainslist.dwr"))
+
+	out, err := capture(t, func() error {
+		return cmdSearch([]string{"madrid", "barcelona", "--date", "[today +1]", "--limit", "1"})
+	})
+	if err != nil {
+		t.Fatalf("cmdSearch with date range failed: %v", err)
+	}
+	if !strings.Contains(out, "[2026-09-22 2026-09-23]") {
+		t.Errorf("expected range string in output header, got: %s", out)
+	}
+}
+
 // Renfe accepts a return date before the outbound and answers with two
 // unrelated lists; the CLI then prints them as one trip nobody can make.
 func TestSearchRejectsAReturnBeforeTheOutbound(t *testing.T) {
