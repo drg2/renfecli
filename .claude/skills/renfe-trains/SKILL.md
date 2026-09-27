@@ -198,7 +198,7 @@ than saying the trip does not work.
 
 ## Dates
 
-`--date` takes `YYYY-MM-DD`, `DD/MM/YYYY`, `today`, `tomorrow`, a weekday name, or `+N` days. A
+`--date` takes `YYYY-MM-DD`, `DD/MM/YYYY`, `today`, `tomorrow`, a weekday name, `+N` days, or a date range `"[from until]"` (e.g. `--date "[today +3]"` or `--date "[2026-10-01 2026-10-05]"`). A date range queries each day in the range and combines the results. `--return` also accepts date ranges matching the length of the outbound range. A
 weekday means the **next** one — asking for "friday" on a Friday gets the week ahead, not a date
 whose trains have already left. When the user says "el viernes" and today is Friday, confirm which
 one they mean rather than assuming.

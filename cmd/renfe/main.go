@@ -138,7 +138,7 @@ ACCOUNT COMMANDS (bring your own browser session):
 
 SEARCH FLAGS:
   --date <d>        YYYY-MM-DD, DD/MM/YYYY, today, tomorrow, a weekday
-                    name, or +N days (default today)
+                    name, +N days, or range '[from until]' (default today)
   --return <d>      round trip: prices the outbound under round-trip
                     rules and prints the return journeys too
   --adults N        adult passengers (default 1). NOTE: all prices are quoted
