@@ -1,11 +1,15 @@
 name: Gemini AI Assistant
 on:
-  pull_request:
-    types: [opened, synchronize]
+  workflow_dispatch: 
 
 jobs:
   gemini:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
