@@ -27,7 +27,7 @@ type searchFlags struct {
 
 func addSearchFlags(fs *flag.FlagSet) *searchFlags {
 	s := &searchFlags{}
-	fs.StringVar(&s.date, "date", "", "departure date: YYYY-MM-DD, DD/MM/YYYY, 'today', 'tomorrow', or +N days (default today)")
+	fs.StringVar(&s.date, "date", "", "departure date: YYYY-MM-DD, DD/MM/YYYY, 'today', 'tomorrow', +N days, or range '[from until]' (default today)")
 	fs.StringVar(&s.ret, "return", "", "return date: prints the return journeys too and prices the outbound under round-trip rules")
 	fs.IntVar(&s.adults, "adults", 0, "adult passengers (default 1, or [defaults] adults)")
 	fs.IntVar(&s.children, "children", 0, "children aged 4-13")

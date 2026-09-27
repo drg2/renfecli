@@ -139,6 +139,9 @@ renfe search madrid sevilla --date friday --return sunday --after 15:00 --return
 # Todos los tipos de tarifa, ocultando los trenes agotados
 renfe search barcelona zaragoza --date +5 --fares --available
 
+# Rango de fechas
+renfe search madrid barcelona --date "[today +3]"
+
 # Para scripts y agentes
 renfe search madrid vigo --date +14 --toon
 ```
@@ -160,8 +163,8 @@ renfe search madrid vigo --date +14 --toon
 
 | Opción | Descripción |
 |--------|-------------|
-| `--date <d>` | `YYYY-MM-DD`, `DD/MM/YYYY`, `today`, `tomorrow`, un día de la semana, o `+N` días |
-| `--return <d>` | Ida y vuelta: ambos sentidos, tarificados con reglas de ida y vuelta |
+| `--date <d>` | `YYYY-MM-DD`, `DD/MM/YYYY`, `today`, `tomorrow`, un día de la semana, `+N` días, o rango `"[inicio fin]"` |
+| `--return <d>` | Ida y vuelta: ambos sentidos, tarificados con reglas de ida y vuelta; admite también rangos `"[inicio fin]"` |
 | `--adults N` `--children N` `--infants N` | Viajeros. **Todos los precios son por pasajero** |
 | `--train N` | Filtra por número de tren (p. ej. 3063) |
 | `--after HH:MM` `--before HH:MM` | Acotan la salida de ida (`--return-*` para la vuelta) |
