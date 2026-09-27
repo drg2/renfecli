@@ -121,6 +121,7 @@ type Results struct {
 	From     string     `json:"from"`
 	To       string     `json:"to"`
 	Date     string     `json:"date"`
+	IsRange  bool       `json:"is_range,omitempty"`
 	Journeys []Journey  `json:"journeys"`
 	Calendar []PriceDay `json:"calendar,omitempty"`
 	Return   *Results   `json:"return,omitempty"`

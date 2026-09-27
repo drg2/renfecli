@@ -45,8 +45,10 @@ type searchSpec struct {
 	dest        client.Station
 	outDates    []time.Time
 	outDisplay  string
+	outIsRange  bool
 	retDates    []time.Time
 	retDisplay  string
+	retIsRange  bool
 	hasReturn   bool
 	adults      int
 	children    int
@@ -83,7 +85,7 @@ func buildSearchSpec(cmd string, cl *client.Client, cfg config.Config, sf *searc
 		return spec, err
 	}
 
-	outDates, outDisp, _, err := parseDateSpec(sf.date)
+	outDates, outDisp, outIsRange, err := parseDateSpec(sf.date)
 	if err != nil {
 		return spec, err
 	}
@@ -96,10 +98,11 @@ func buildSearchSpec(cmd string, cl *client.Client, cfg config.Config, sf *searc
 
 	var retDates []time.Time
 	var retDisp string
+	var retIsRange bool
 	hasReturn := false
 	if sf.ret != "" {
 		hasReturn = true
-		if retDates, retDisp, _, err = parseDateSpec(sf.ret); err != nil {
+		if retDates, retDisp, retIsRange, err = parseDateSpec(sf.ret); err != nil {
 			return spec, err
 		}
 		if len(retDates) != len(outDates) && len(outDates) > 1 && len(retDates) > 1 {
@@ -129,8 +132,8 @@ func buildSearchSpec(cmd string, cl *client.Client, cfg config.Config, sf *searc
 
 	return searchSpec{
 		origin: origin, dest: dest,
-		outDates: outDates, outDisplay: outDisp,
-		retDates: retDates, retDisplay: retDisp,
+		outDates: outDates, outDisplay: outDisp, outIsRange: outIsRange,
+		retDates: retDates, retDisplay: retDisp, retIsRange: retIsRange,
 		hasReturn:   hasReturn,
 		adults:      adults,
 		children:    sf.children,
@@ -283,6 +286,7 @@ func cmdSearch(args []string) error {
 		From:     fromName,
 		To:       toName,
 		Date:     spec.outDisplay,
+		IsRange:  spec.outIsRange,
 		Journeys: combinedOutJourneys,
 		Calendar: calendar,
 	}
@@ -291,6 +295,7 @@ func cmdSearch(args []string) error {
 			From:     toName,
 			To:       fromName,
 			Date:     spec.retDisplay,
+			IsRange:  spec.retIsRange,
 			Journeys: combinedRetJourneys,
 		}
 	}
