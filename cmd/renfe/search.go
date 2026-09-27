@@ -257,6 +257,18 @@ func cmdSearch(args []string) error {
 				return err
 			}
 			stderrLogf("search failed for date %s: %v", d.Format("2006-01-02"), err)
+			if spec.outIsRange && !*available && i < len(spec.outDates) {
+				combinedOutJourneys = append(combinedOutJourneys, client.Journey{
+					Date:      d.Format("2006-01-02"),
+					TrainType: "NONE",
+				})
+			}
+			if spec.retIsRange && !*available && spec.hasReturn && (i < len(spec.retDates) || len(spec.retDates) == 1) {
+				combinedRetJourneys = append(combinedRetJourneys, client.Journey{
+					Date:      rDate.Format("2006-01-02"),
+					TrainType: "NONE",
+				})
+			}
 			continue
 		}
 
@@ -268,11 +280,23 @@ func cmdSearch(args []string) error {
 
 		if i < len(spec.outDates) {
 			filteredOut := filterJourneys(res.Journeys, *available, *cheapest, *limit, window, *train)
+			if len(filteredOut) == 0 && spec.outIsRange && !*available {
+				filteredOut = append(filteredOut, client.Journey{
+					Date:      d.Format("2006-01-02"),
+					TrainType: "NONE",
+				})
+			}
 			combinedOutJourneys = append(combinedOutJourneys, filteredOut...)
 		}
 
 		if res.Return != nil && (spec.hasReturn && (i < len(spec.retDates) || len(spec.retDates) == 1)) {
 			filteredRet := filterJourneys(res.Return.Journeys, *available, *cheapest, *limit, retWindow, *train)
+			if len(filteredRet) == 0 && spec.retIsRange && !*available {
+				filteredRet = append(filteredRet, client.Journey{
+					Date:      rDate.Format("2006-01-02"),
+					TrainType: "NONE",
+				})
+			}
 			combinedRetJourneys = append(combinedRetJourneys, filteredRet...)
 		}
 	}
