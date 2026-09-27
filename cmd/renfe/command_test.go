@@ -395,7 +395,7 @@ func TestSearchDateRangePartialFailure(t *testing.T) {
 	fixClock(t) // 2026-09-22
 	trains := fixture(t, "trainslist.dwr")
 	callCount := 0
-	withRenfe(t, renfeServer(t, func(path string) []byte {
+	withRenfe(t, renfeServer(t, func(_ string) []byte {
 		callCount++
 		if callCount == 2 {
 			return []byte("invalid response")
