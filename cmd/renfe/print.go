@@ -77,6 +77,14 @@ func printResults(w io.Writer, res *client.Results, q client.Query, withFares bo
 			}
 			continue
 		}
+		if j.TrainType == "FAIL" {
+			if res.IsRange && j.Date != "" {
+				p.printf("%s  search failed\n", j.Date)
+			} else {
+				p.println("search failed")
+			}
+			continue
+		}
 		depTime := j.Departure
 		if res.IsRange && j.Date != "" {
 			depTime = j.Date + " " + j.Departure

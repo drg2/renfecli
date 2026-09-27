@@ -390,3 +390,26 @@ func TestErrorTextIsStrippedButKeepsItsLines(t *testing.T) {
 		t.Errorf("safeField mangled ordinary text: %q", got)
 	}
 }
+
+func TestSearchDateRangePartialFailure(t *testing.T) {
+	fixClock(t) // 2026-09-22
+	trains := fixture(t, "trainslist.dwr")
+	callCount := 0
+	withRenfe(t, renfeServer(t, func(path string) []byte {
+		callCount++
+		if callCount == 2 {
+			return []byte("invalid response")
+		}
+		return trains
+	}))
+
+	out, err := capture(t, func() error {
+		return cmdSearch([]string{"madrid", "barcelona", "--date", "[today +1]"})
+	})
+	if err != nil {
+		t.Fatalf("cmdSearch with partial date failure should complete: %v", err)
+	}
+	if !strings.Contains(out, "2026-09-23  search failed") {
+		t.Errorf("expected '2026-09-23  search failed' in output, got:\n%s", out)
+	}
+}

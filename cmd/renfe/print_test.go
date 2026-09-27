@@ -53,6 +53,26 @@ func TestPrintResultsFlagsWhatCannotBeBought(t *testing.T) {
 	}
 }
 
+func TestPrintResultsDateRangeSearchFailed(t *testing.T) {
+	res := &client.Results{
+		From: "A", To: "B", Date: "[2026-09-22 2026-09-23]", IsRange: true,
+		Journeys: []client.Journey{
+			{Date: "2026-09-22", Departure: "06:00", Arrival: "09:00", Price: 45, Available: true},
+			{Date: "2026-09-23", TrainType: "FAIL"},
+		},
+	}
+	out := render(t, res, client.Query{Adults: 1})
+	for _, want := range []string{
+		"[2026-09-22 2026-09-23]",
+		"2026-09-22 06:00 → 09:00",
+		"2026-09-23  search failed",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in date range output with failed day:\n%s", want, out)
+		}
+	}
+}
+
 func TestPrintResultsDateRangeNoJourneys(t *testing.T) {
 	res := &client.Results{
 		From: "A", To: "B", Date: "[2026-09-22 2026-09-23]", IsRange: true,
