@@ -260,13 +260,13 @@ func cmdSearch(args []string) error {
 			if spec.outIsRange && !*available && i < len(spec.outDates) {
 				combinedOutJourneys = append(combinedOutJourneys, client.Journey{
 					Date:      d.Format("2006-01-02"),
-					TrainType: "NONE",
+					TrainType: "FAIL",
 				})
 			}
 			if spec.retIsRange && !*available && spec.hasReturn && (i < len(spec.retDates) || len(spec.retDates) == 1) {
 				combinedRetJourneys = append(combinedRetJourneys, client.Journey{
 					Date:      rDate.Format("2006-01-02"),
-					TrainType: "NONE",
+					TrainType: "FAIL",
 				})
 			}
 			continue
