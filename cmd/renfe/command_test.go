@@ -38,6 +38,23 @@ func TestSearchCommandEndToEnd(t *testing.T) {
 	}
 }
 
+func TestSearchCommandTrainFilter(t *testing.T) {
+	withRenfe(t, replaying(t, "trainslist.dwr"))
+
+	out, err := capture(t, func() error {
+		return cmdSearch([]string{"madrid", "barcelona", "--train", "3063"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "tren 3063") {
+		t.Errorf("expected tren 3063 in output:\n%s", out)
+	}
+	if strings.Contains(out, "tren 3073") {
+		t.Errorf("tren 3073 should have been filtered out:\n%s", out)
+	}
+}
+
 // --json is the contract agents depend on, so it must stay parseable and carry
 // the fields the human view shows.
 func TestSearchCommandJSON(t *testing.T) {

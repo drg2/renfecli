@@ -59,19 +59,19 @@ func TestReorderArgs(t *testing.T) {
 
 func TestFilterJourneys(t *testing.T) {
 	js := []client.Journey{
-		{Departure: "07:00", Price: 80, Available: true},
-		{Departure: "08:00", Price: 0, SoldOut: true},
-		{Departure: "09:00", Price: 30, Available: true},
-		{Departure: "10:00", Price: 50, Available: true},
+		{Departure: "07:00", Price: 80, Available: true, Trains: []string{"3063"}},
+		{Departure: "08:00", Price: 0, SoldOut: true, Trains: []string{"3073"}},
+		{Departure: "09:00", Price: 30, Available: true, Trains: []string{"3093"}},
+		{Departure: "10:00", Price: 50, Available: true, Trains: []string{"3091", "3301"}},
 	}
 	t.Run("available only", func(t *testing.T) {
-		got := filterJourneys(append([]client.Journey(nil), js...), true, false, 0, timeWindow{})
+		got := filterJourneys(append([]client.Journey(nil), js...), true, false, 0, timeWindow{}, "")
 		if len(got) != 3 {
 			t.Fatalf("got %d journeys, want 3", len(got))
 		}
 	})
 	t.Run("by price keeps sold-out last", func(t *testing.T) {
-		got := filterJourneys(append([]client.Journey(nil), js...), false, true, 0, timeWindow{})
+		got := filterJourneys(append([]client.Journey(nil), js...), false, true, 0, timeWindow{}, "")
 		want := []string{"09:00", "10:00", "07:00", "08:00"}
 		for i, w := range want {
 			if got[i].Departure != w {
@@ -80,14 +80,38 @@ func TestFilterJourneys(t *testing.T) {
 		}
 	})
 	t.Run("limit counts what is shown", func(t *testing.T) {
-		got := filterJourneys(append([]client.Journey(nil), js...), true, true, 2, timeWindow{})
+		got := filterJourneys(append([]client.Journey(nil), js...), true, true, 2, timeWindow{}, "")
 		if len(got) != 2 || got[0].Departure != "09:00" || got[1].Departure != "10:00" {
 			t.Errorf("got %v, want the two cheapest available", departures(got))
 		}
 	})
+	t.Run("filter by train number", func(t *testing.T) {
+		got := filterJourneys(append([]client.Journey(nil), js...), false, false, 0, timeWindow{}, "3093")
+		if len(got) != 1 || got[0].Departure != "09:00" {
+			t.Errorf("got %v, want departure 09:00", departures(got))
+		}
+	})
+	t.Run("filter by train number with leading zeroes", func(t *testing.T) {
+		got := filterJourneys(append([]client.Journey(nil), js...), false, false, 0, timeWindow{}, "03093")
+		if len(got) != 1 || got[0].Departure != "09:00" {
+			t.Errorf("got %v, want departure 09:00", departures(got))
+		}
+	})
+	t.Run("filter by connecting leg train number", func(t *testing.T) {
+		got := filterJourneys(append([]client.Journey(nil), js...), false, false, 0, timeWindow{}, "3301")
+		if len(got) != 1 || got[0].Departure != "10:00" {
+			t.Errorf("got %v, want departure 10:00", departures(got))
+		}
+	})
+	t.Run("filter by non-existent train number", func(t *testing.T) {
+		got := filterJourneys(append([]client.Journey(nil), js...), false, false, 0, timeWindow{}, "9999")
+		if len(got) != 0 {
+			t.Errorf("got %v, want 0 journeys", departures(got))
+		}
+	})
 	t.Run("does not alias the caller's slice", func(t *testing.T) {
 		src := append([]client.Journey(nil), js...)
-		_ = filterJourneys(src, true, false, 0, timeWindow{})
+		_ = filterJourneys(src, true, false, 0, timeWindow{}, "")
 		if src[1].Departure != "08:00" {
 			t.Error("filtering overwrote the input slice")
 		}
@@ -116,7 +140,7 @@ func TestTimeWindow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parseTimeWindow(%q,%q): %v", c.after, c.before, err)
 		}
-		got := departures(filterJourneys(append([]client.Journey(nil), js...), false, false, 0, w))
+		got := departures(filterJourneys(append([]client.Journey(nil), js...), false, false, 0, w, ""))
 		if !reflect.DeepEqual(got, c.want) {
 			t.Errorf("after=%q before=%q -> %v, want %v", c.after, c.before, got, c.want)
 		}
@@ -262,8 +286,8 @@ func TestRoundTripTimeWindowsAreIndependent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gotOut := departures(filterJourneys(append([]client.Journey(nil), out...), false, false, 0, outWin))
-	gotRet := departures(filterJourneys(append([]client.Journey(nil), ret...), false, false, 0, retWin))
+	gotOut := departures(filterJourneys(append([]client.Journey(nil), out...), false, false, 0, outWin, ""))
+	gotRet := departures(filterJourneys(append([]client.Journey(nil), ret...), false, false, 0, retWin, ""))
 	if len(gotOut) != 1 || gotOut[0] != "07:00" {
 		t.Errorf("outbound = %v, want the morning train", gotOut)
 	}
@@ -273,7 +297,7 @@ func TestRoundTripTimeWindowsAreIndependent(t *testing.T) {
 
 	// The outbound window must still carry over when no return window is given,
 	// so the one-way behaviour is unchanged.
-	carried := departures(filterJourneys(append([]client.Journey(nil), ret...), false, false, 0, outWin))
+	carried := departures(filterJourneys(append([]client.Journey(nil), ret...), false, false, 0, outWin, ""))
 	if len(carried) != 1 || carried[0] != "09:00" {
 		t.Errorf("carried-over window = %v, want the 09:00", carried)
 	}

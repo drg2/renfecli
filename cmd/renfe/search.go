@@ -138,6 +138,7 @@ func runSearch(cmd string, sf *searchFlags, args []string) (*client.Client, clie
 func cmdSearch(args []string) error {
 	fs, cf := newCommonFlags("search")
 	sf := addSearchFlags(fs)
+	train := fs.String("train", "", "only show journeys for this train number (e.g. 3063)")
 	after := fs.String("after", "", "only outbound trains departing at or after this time (HH:MM)")
 	before := fs.String("before", "", "only outbound trains departing at or before this time (HH:MM)")
 	retAfter := fs.String("return-after", "", "same, for the return leg (default: the outbound window)")
@@ -168,9 +169,9 @@ func cmdSearch(args []string) error {
 			return err
 		}
 	}
-	res.Journeys = filterJourneys(res.Journeys, *available, *cheapest, *limit, window)
+	res.Journeys = filterJourneys(res.Journeys, *available, *cheapest, *limit, window, *train)
 	if res.Return != nil {
-		res.Return.Journeys = filterJourneys(res.Return.Journeys, *available, *cheapest, *limit, retWindow)
+		res.Return.Journeys = filterJourneys(res.Return.Journeys, *available, *cheapest, *limit, retWindow, *train)
 	}
 	if emitted, err := emitStructured(cf, res); emitted {
 		return err
@@ -318,9 +319,19 @@ func parseTimeWindow(after, before string) (timeWindow, error) {
 
 // filterJourneys applies the display options in a fixed order — drop, then
 // sort, then cap — so --limit always counts what the user actually sees.
-func filterJourneys(js []client.Journey, onlyAvailable, byPrice bool, limit int, window timeWindow) []client.Journey {
+func filterJourneys(js []client.Journey, onlyAvailable, byPrice bool, limit int, window timeWindow, train string) []client.Journey {
 	if window.set() {
 		js = keepJourneys(js, func(j client.Journey) bool { return window.contains(j.Departure) })
+	}
+	if want := client.TrainNumber(train); want != "" {
+		js = keepJourneys(js, func(j client.Journey) bool {
+			for _, t := range j.Trains {
+				if t == want {
+					return true
+				}
+			}
+			return false
+		})
 	}
 	if onlyAvailable {
 		js = keepJourneys(js, func(j client.Journey) bool { return j.Available })
