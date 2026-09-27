@@ -163,6 +163,7 @@ renfe search madrid vigo --date +14 --toon
 | `--date <d>` | `YYYY-MM-DD`, `DD/MM/YYYY`, `today`, `tomorrow`, un día de la semana, o `+N` días |
 | `--return <d>` | Ida y vuelta: ambos sentidos, tarificados con reglas de ida y vuelta |
 | `--adults N` `--children N` `--infants N` | Viajeros. **Todos los precios son por pasajero** |
+| `--train N` | Filtra por número de tren (p. ej. 3063) |
 | `--after HH:MM` `--before HH:MM` | Acotan la salida de ida (`--return-*` para la vuelta) |
 | `--direct` | Excluye los viajes con enlace |
 | `--cheapest` `--available` `--fares` `--limit N` | Ordenar por precio · ocultar lo no comprable · todas las tarifas · limitar la lista |

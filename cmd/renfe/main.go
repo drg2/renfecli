@@ -144,6 +144,7 @@ SEARCH FLAGS:
   --adults N        adult passengers (default 1). NOTE: all prices are quoted
                     PER PASSENGER, not per booking
   --children N      children aged 4-13        --infants N   under 4, no seat
+  --train N         only show journeys with this train number (e.g. 3063)
   --after HH:MM     only outbound trains departing at or after this time
   --before HH:MM    only outbound trains departing at or before this time
   --return-after HH:MM    the same, for the return leg of a round trip
