@@ -69,6 +69,14 @@ func printResults(w io.Writer, res *client.Results, q client.Query, withFares bo
 		return p.err
 	}
 	for _, j := range res.Journeys {
+		if j.TrainType == "NONE" {
+			if res.IsRange && j.Date != "" {
+				p.printf("%s  no journeys found\n", j.Date)
+			} else {
+				p.println("no journeys found")
+			}
+			continue
+		}
 		depTime := j.Departure
 		if res.IsRange && j.Date != "" {
 			depTime = j.Date + " " + j.Departure
