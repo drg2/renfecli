@@ -12,7 +12,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: gofmt (black --check equivalent)
+      - name: testrun
         run: |
           make 
           ./renfe search alicante madrid  --date 2026/10/15 --train 5063
