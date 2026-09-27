@@ -69,15 +69,23 @@ func printResults(w io.Writer, res *client.Results, q client.Query, withFares bo
 		return p.err
 	}
 	for _, j := range res.Journeys {
+		depTime := j.Departure
+		if res.IsRange && j.Date != "" {
+			depTime = j.Date + " " + j.Departure
+		}
 		p.printf("%-9s %s → %s  %-9s  %-22s  %s%s\n",
-			trainType(j.TrainType), j.Departure, j.Arrival, duration(j.Minutes),
+			trainType(j.TrainType), depTime, j.Arrival, duration(j.Minutes),
 			trainLabel(j), price(j), tags(j))
+		indent := "           "
+		if res.IsRange && j.Date != "" {
+			indent += strings.Repeat(" ", len(j.Date)+1)
+		}
 		if j.StationChange != "" {
-			p.printf("           ⚠ %s\n", j.StationChange)
+			p.printf("%s⚠ %s\n", indent, j.StationChange)
 		}
 		if withFares {
 			for _, f := range j.Fares {
-				p.printf("           %-16s %8.2f €  %s\n", f.Name, f.Price, fareClass(f.Class))
+				p.printf("%s%-16s %8.2f €  %s\n", indent, f.Name, f.Price, fareClass(f.Class))
 			}
 		}
 	}
